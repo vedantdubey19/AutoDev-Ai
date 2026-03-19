@@ -1,0 +1,45 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Install and Build Client
+        run: |
+          cd client
+          npm ci || npm install
+          npm run build
+          
+      - name: Install Server
+        run: |
+          cd server
+          npm ci || npm install
+
+  docker-build:
+    needs: lint-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Server Image
+        run: docker build -t autodev-server ./server
+        
+      - name: Build Client Image
+        run: docker build -t autodev-client ./client
+        
+      - name: Build ML Service Image
+        run: docker build -t autodev-ml ./ml-service
